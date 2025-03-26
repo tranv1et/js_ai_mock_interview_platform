@@ -3,40 +3,52 @@ import React, { ReactNode } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import Image from "next/image";
 import Link from "next/link";
-
-const formSchema = z.object({
-    username: z.string().min(2).max(50),
-});
+import FormField from "./FormField";
+import { useRouter } from "next/navigation";
 
 type FormType = "sign-in" | "sign-up";
+
+const authFormSchema = (type: FormType) => {
+    return z.object({
+        name: type === "sign-up" ? z.string().min(3) : z.string().optional(),
+        email: z.string().email(),
+        password: z.string().min(8),
+    });
+};
+
 const AuthForm = ({ type }: { type: FormType }) => {
+    const router = useRouter();
+    const formSchema = authFormSchema(type);
     // 1. Define your form.
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            username: "",
+            name: "",
+            email: "",
+            password: "",
         },
     });
 
     // 2. Define a submit handler.
     function onSubmit(values: z.infer<typeof formSchema>) {
-        // Do something with the form values.
-        // ✅ This will be type-safe and validated.
-        console.log(values);
+        try {
+            if (type === "sign-up") {
+                toast.success("Account created successfully.Please sign in");
+                router.push("/sign-in");
+            } else {
+                toast.success("Sign in successfully.");
+                router.push("/");
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error("There was an error: " + error);
+        }
     }
     const isSignIn = type === "sign-in";
 
@@ -54,9 +66,28 @@ const AuthForm = ({ type }: { type: FormType }) => {
                         onSubmit={form.handleSubmit(onSubmit)}
                         className="w-full space-y-6 mt-4 form"
                     >
-                        {!isSignIn && <p>Name</p>}
-                        <p>Email</p>
-                        <p>Password</p>
+                        {!isSignIn && (
+                            <FormField
+                                name="name"
+                                placeholder="Your Name"
+                                control={form.control}
+                                label="Name"
+                            />
+                        )}
+                        <FormField
+                            name="email"
+                            placeholder="Email"
+                            control={form.control}
+                            label="Email"
+                            type="email"
+                        />
+                        <FormField
+                            name="password"
+                            placeholder="Password"
+                            control={form.control}
+                            label="Password"
+                            type="password"
+                        />
 
                         <Button className="btn" type="submit">
                             {isSignIn ? "Sign In" : "Create an Account"}
