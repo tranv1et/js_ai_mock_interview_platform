@@ -35,6 +35,7 @@ const FormField = ({
                     <FormControl>
                         <Input
                             className="input"
+                            type={type}
                             placeholder={placeholder}
                             {...field}
                         />
