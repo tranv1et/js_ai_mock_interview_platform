@@ -1,37 +1,37 @@
 "use client";
-import React, { ReactNode } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
-import Image from "next/image";
+import { z } from "zod";
 import Link from "next/link";
-import FormField from "./FormField";
+import Image from "next/image";
+import { toast } from "sonner";
+import { auth } from "@/firebase/client";
+import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
 } from "firebase/auth";
-import { auth } from "@/firebase/client";
-import { signIn, signUp } from "@/lib/actions/auth.action";
 
-type FormType = "sign-in" | "sign-up";
+import { Form } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+
+import { signIn, signUp } from "@/lib/actions/auth.action";
+import FormField from "./FormField";
 
 const authFormSchema = (type: FormType) => {
     return z.object({
         name: type === "sign-up" ? z.string().min(3) : z.string().optional(),
         email: z.string().email(),
-        password: z.string().min(8),
+        password: z.string().min(3),
     });
 };
 
 const AuthForm = ({ type }: { type: FormType }) => {
     const router = useRouter();
+
     const formSchema = authFormSchema(type);
-    // 1. Define your form.
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -41,11 +41,10 @@ const AuthForm = ({ type }: { type: FormType }) => {
         },
     });
 
-    // 2. Define a submit handler.
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    const onSubmit = async (data: z.infer<typeof formSchema>) => {
         try {
             if (type === "sign-up") {
-                const { name, email, password } = values;
+                const { name, email, password } = data;
 
                 const userCredential = await createUserWithEmailAndPassword(
                     auth,
@@ -60,35 +59,42 @@ const AuthForm = ({ type }: { type: FormType }) => {
                     password,
                 });
 
-                if (!result?.success) {
-                    toast.error(result?.message);
+                if (!result.success) {
+                    toast.error(result.message);
                     return;
                 }
 
-                toast.success("Account created successfully.Please sign in");
+                toast.success("Account created successfully. Please sign in.");
                 router.push("/sign-in");
             } else {
-                const { email, password } = values;
-                const userCredentials = await signInWithEmailAndPassword(
+                const { email, password } = data;
+
+                const userCredential = await signInWithEmailAndPassword(
                     auth,
                     email,
                     password
                 );
 
-                const idToken = await userCredentials.user.getIdToken();
+                const idToken = await userCredential.user.getIdToken();
                 if (!idToken) {
-                    toast.error("sign in failed");
+                    toast.error("Sign in Failed. Please try again.");
                     return;
                 }
-                await signIn({ email, idToken });
-                toast.success("Sign in successfully.");
+
+                await signIn({
+                    email,
+                    idToken,
+                });
+
+                toast.success("Signed in successfully.");
                 router.push("/");
             }
         } catch (error) {
             console.log(error);
-            toast.error("There was an error: " + error);
+            toast.error(`There was an error: ${error}`);
         }
-    }
+    };
+
     const isSignIn = type === "sign-in";
 
     return (
@@ -99,7 +105,8 @@ const AuthForm = ({ type }: { type: FormType }) => {
                     <h2 className="text-primary-100">PrepWise</h2>
                 </div>
 
-                <h3>Practice job interview with AI</h3>
+                <h3>Practice job interviews with AI</h3>
+
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit)}
@@ -107,24 +114,27 @@ const AuthForm = ({ type }: { type: FormType }) => {
                     >
                         {!isSignIn && (
                             <FormField
-                                name="name"
-                                placeholder="Your Name"
                                 control={form.control}
+                                name="name"
                                 label="Name"
+                                placeholder="Your Name"
+                                type="text"
                             />
                         )}
+
                         <FormField
-                            name="email"
-                            placeholder="Email"
                             control={form.control}
+                            name="email"
                             label="Email"
+                            placeholder="Your email address"
                             type="email"
                         />
+
                         <FormField
-                            name="password"
-                            placeholder="Password"
                             control={form.control}
+                            name="password"
                             label="Password"
+                            placeholder="Enter your password"
                             type="password"
                         />
 
@@ -133,13 +143,14 @@ const AuthForm = ({ type }: { type: FormType }) => {
                         </Button>
                     </form>
                 </Form>
+
                 <p className="text-center">
-                    {isSignIn ? "No account yet?" : "Have an Account already?"}
+                    {isSignIn ? "No account yet?" : "Have an account already?"}
                     <Link
-                        href={!isSignIn ? "/sign-in" : "sign-up"}
+                        href={!isSignIn ? "/sign-in" : "/sign-up"}
                         className="font-bold text-user-primary ml-1"
                     >
-                        {!isSignIn ? "Sign in" : "Sign up"}
+                        {!isSignIn ? "Sign In" : "Sign Up"}
                     </Link>
                 </p>
             </div>
